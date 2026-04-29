@@ -34,11 +34,12 @@ To open the settings, use slash command: **`/gbb`** or click the minimap icon.
 ## Graphical Interface
 
 ### Main Window
-<img width="773" height="728" alt="MainWindow" src="https://github.com/user-attachments/assets/16e58b45-02f1-422d-a3b9-c0f6a04932fa" />
+<img width="773" height="728" alt="MainWindow" src="https://github.com/user-attachments/assets/06065116-542c-463d-9a19-be2c80160f85" />
+
 
 
 ### Interface Settings
-<img width="661" height="589" alt="Settings" src="https://github.com/user-attachments/assets/f95f7811-b00f-4bed-bf18-57adbb5dfc65" />
+<img width="661" height="589" alt="Settings" src="https://github.com/user-attachments/assets/d4abf72a-6927-4bc9-ae0b-8e43d50eb80a" />
 
 
 ## Slash Commands
