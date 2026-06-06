@@ -33,7 +33,7 @@ GBB.suffixTagsLoc = langSplit({
 
 GBB.searchTagsLoc = langSplit({
     enGB =
-    "group need lfg lf lfm lf1m lf2m lf3m lf4m lf5m lftank lfheal lfhealer lfdps lfdd dd heal healer healers tank tanks dps druid dudu huntard hunter mage pala pally paladin priest rogue rouge shaman lock warlock warrior elite quest elitequest elitequests",
+    "group need lfg lf lfm lf1m lf2m lf3m lf4m lf5m lftank lfheal lfhealer lfdps lfdd dd heal healer healers tank tanks dps druid dudu huntard hunter mage pala pally paladin priest rogue rouge shaman lock warlock warrior elite quest elitequest elitequests summon summ summons",
     deDE =
     "gesucht suche suchen sucht such gruppe grp sfg sfm druide dudu jäger magier priester warri schurke rschami schamane hexer hexenmeister hm krieger heiler xheiler go run",
     ruRU = "лфг ищет ищу нид нужны лфм лф2м ищем пати похилю лф танк хил нужен дд рдд мдд ршам рога вар прист армс пал",
@@ -43,7 +43,7 @@ GBB.searchTagsLoc = langSplit({
 })
 
 GBB.badTagsLoc = langSplit({
-    enGB = "boost boosts boosting recruit recruiting apply social discord roster twitch stream speaking speaker layer",
+    enGB = "boost boosts boosting recruit recruiting apply social roster twitch stream speaking speaker layer",
     deDE = "fc layer",
     ruRU = "гильдию гильдия слой",
     frFR = "layer",
@@ -76,7 +76,7 @@ GBB.dungeonTagsLoc = {
         ["ARMS"] = "smarm sma arm armory herod armoury arms",
         ["CATH"] = "smcath smc cath cathedral",
         ["RFD"] = "rfd downs",
-        ["ULDA"] = "uld ulda uldaman ulduman uldman uldama udaman",
+        ["ULDA"] = "ulda uldaman ulduman uldman uldama udaman",
         ["ZF"] = "zf zul farrak zul'farrak zulfarrak zulfarak zul´farrak zul`farrak zulfa zulf",
         ["MARA"] = "mar mara maraudon mauradon mauro maurodon princessrun maraudin maura marau mauraudon",
         ["ST"] = "st sunken atal temple",
@@ -89,12 +89,12 @@ GBB.dungeonTagsLoc = {
         ["STRAT"] = "stratlive live living stratUD ud baron stratholme stath stratholm strah strath strat starth",
         ["SCHOLO"] = "scholomance scholo sholo sholomance",
         ["ONY"] = "onyxia ony onyxia",
-        ["MC"] = "molten core mc",
+        ["MC"] = "molten mc",
         ["ZG"] = "zg gurub zul'gurub zulgurub zul´gurub zul`gurub zulg",
         ["AQ20"] = "ruins aq20 aqr",
         ["BWL"] = "blackwing bwl",
         ["AQ40"] = "aq40 aqt",
-        ["NAX"] = "naxxramas naxx nax",
+        ["NAX"] = "naxx40",
         ["RAMPS"] = "ramparts rampart ramp ramps",
         ["BF"] = "furnace furn bf",
         ["SP"] = "slavepens pens sp",
@@ -104,7 +104,7 @@ GBB.dungeonTagsLoc = {
         ["SH"] = "sethekk seth sethek",
         ["OHF"] = "ohb oh ohf durnholde hillsbrad escape",
         ["MECHA"] = "mech mechanar",
-        ["BM"] = "morass bm black",
+        ["BM"] = "morass bm",
         ["MGT"] = "mgt mrt terrace magisters magister",
         ["SHH"] = "sh shattered shatered shaterred",
         ["BOTA"] = "botanica bot",
@@ -118,7 +118,7 @@ GBB.dungeonTagsLoc = {
         ["EYE"] = "eye tk tempest keep",
         ["ZA"] = "za zulaman zul-aman zaman aman zul'aman",
         ["HYJAL"] = "hyjal hs hyj mh",
-        ["BT"] = "bt illidan blacktemple black temple",
+        ["BT"] = "bt illidan blacktemple temple tample",
         ["SWP"] = "swp sunwell plateau plataeu sunwel",
         ["UK"] = "uk utk utgarde",
         ["NEX"] = "nexus nex",
@@ -153,7 +153,7 @@ GBB.dungeonTagsLoc = {
         ["ARENA"] = "2s 3s 5s 3v3 5v5 2v2 2vs2 3vs3 5vs5",
         ["BREW"] = "brewfest brew coren dire direbrew beerfest",
         ["HOLLOW"] = "headless horseman hollow",
-        ["TRADE"] = "buy buying sell selling wts wtb hitem henchant htrade enchanter wtt",
+        ["TRADE"] = "buy buying sell selling wts wtb hitem henchant htrade enchanter wtt lfw mats craft crafting leatherworking blacksmithing tailoring enchanting alchemy jewelcrafting engineering inscription mining herbalism skinning",
     }),
     deDE = langSplit({
         ["RFC"] = "rfa ragefireabgrund flammenschlund flamenschlund rf rfg",
@@ -469,3 +469,22 @@ GBB.dungeonSecondTags = {
     ["SM2"] = { "GY", "LIB", "ARMS", "CATH" },
     ["DM2"] = { "DMW", "DME", "DMN", "-DM" },
 }
+
+GBB.classSpecRoleTags = {}
+local function regClassSpecRole(str)
+    for _, w in ipairs(Split(str, " ")) do
+        GBB.classSpecRoleTags[string.lower(w)] = true
+    end
+end
+regClassSpecRole("dk deathknight dru druid pala pally paladin hunt hunter priest mage rog rogue rouge sham shama shaman wlock warlock war warri warrior")
+regClassSpecRole("bdk udk fdk blooddk unholydk frostdk")
+regClassSpecRole("bala dudu boomy boomie boomkin balance feral guardian rdru rdruid restodru restodruid")
+regClassSpecRole("protpal protpala pp protectionpala protectionpal ppal ppala hpal hpala hpm holypal holypala retri rpal rpala ret retro retribution")
+regClassSpecRole("bm mm surv sv beastmastery marksmanship survival")
+regClassSpecRole("hpriest dc dcpriest disc disco sp shp spriest shadowpriest")
+regClassSpecRole("amage arcanemage fmage firemage frostmage")
+regClassSpecRole("assa arogue arog combat comb crogue crog sub subb subrogue subbrogue subrog")
+regClassSpecRole("rsham rshama restosham elemental ele elesham eleshama esham eshama ench encha enchasham enha enhance enhancement")
+regClassSpecRole("afli affli afflim alock affwlock affliction demo demolock demowlock demonology destr destrwlock destroy destruction")
+regClassSpecRole("awar awarri fwar fwarri furi fury protwar pwar pwarri prowarri arms")
+regClassSpecRole("mt ot maintank offtank tank heal healer mdps rdps spelldps dps dd")

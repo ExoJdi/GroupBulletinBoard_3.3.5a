@@ -278,7 +278,7 @@ function GBB.OptionsInit()
 
     GBB.Options.InLine()
     GBB.Options.AddButton(GBB.L["BtnSelectAll"], function()
-      DoSelectFilter(true, WotlkChkBox_FilterDungeon, GBB.WOTLKDUNGEONSTART, GBB.WOTLKMAXDUNGEON - 2)
+      DoSelectFilter(true, WotlkChkBox_FilterDungeon, GBB.WOTLKDUNGEONSTART, GBB.WOTLKMAXDUNGEON - 3)
     end)
     GBB.Options.AddButton(GBB.L["BtnUnselectAll"], function()
       DoSelectFilter(false, WotlkChkBox_FilterDungeon, GBB.WOTLKDUNGEONSTART, GBB.WOTLKMAXDUNGEON)
@@ -310,7 +310,7 @@ function GBB.OptionsInit()
 
     GBB.Options.InLine()
     GBB.Options.AddButton(GBB.L["BtnSelectAll"], function()
-      DoSelectFilter(true, TbcChkBox_FilterDungeon, GBB.TBCDUNGEONSTART, GBB.TBCMAXDUNGEON - 2)
+      DoSelectFilter(true, TbcChkBox_FilterDungeon, GBB.TBCDUNGEONSTART, GBB.TBCMAXDUNGEON - 3)
     end)
     GBB.Options.AddButton(GBB.L["BtnUnselectAll"], function()
       DoSelectFilter(false, TbcChkBox_FilterDungeon, GBB.TBCDUNGEONSTART, GBB.TBCMAXDUNGEON)
@@ -319,7 +319,7 @@ function GBB.OptionsInit()
   end
 
   GBB.Options.Indent(-10)
-  GBB.Options.NextRelativY = -25
+  GBB.Options.NextRelativY = 0
 
   SetChatOption()
 

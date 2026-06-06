@@ -1,13 +1,11 @@
 ## Interface: 30300
 ## Title: Group Bulletin Board
 ## Notes: A bulletin board for LFG/LFM messages.
-## Version: 1.5.0
-## Author: fondlez (fixed by Jdi)
+## Version: 1.6.0
+## Author: Jdi
 ## X-Website: https://github.com/ExoJdi/GroupBulletinBoard_3.3.5a
 ## X-Category: Chat/Communication
 ## OG-Author: Obszczymucha aka. Ohhaimark
-## OG-Repo: https://codeberg.org/obszczymucha/group-bulletin-board-tbc
-## OG-Git-Tag: v1.5.0
 ## DefaultState: enabled
 ## SavedVariables: GroupBulletinBoardDb
 ## SavedVariablesPerCharacter: GroupBulletinBoardDbChar
@@ -18,7 +16,6 @@
 embeds.xml
 
 Loader.lua
-Backport.lua
 InterfaceOptionsFrame.lua
 LibGPIOptions.lua
 LibGPIMinimapButton.lua
@@ -29,6 +26,5 @@ Tags.lua
 Dungeons.lua
 RequestList.lua
 Options.lua
-GroupList.lua
 GroupBulletinBoard.lua
 GroupBulletinBoard.xml

@@ -3,99 +3,6 @@ if not GBB then
   GBB = GroupBulletinBoard_Addon or {}
 end
 
-function GBB.CreateChatFrame(name, ...)
-  local Frame = name and FCF_OpenNewWindow(name, true) or ChatFrame1
-  if (...) then
-    for index = 1, select('#', ...) do
-      ChatFrame_AddMessageGroup(Frame, select(index, ...))
-    end
-  end
-  return Frame
-end
-
-local function GetChannels()
-  local channelList = { GetChannelList() }
-  local channels = {}
-  for i = 1, #channelList, 2 do
-    table.insert(channels, {
-      id = channelList[i],
-      name = channelList[i + 1]
-    })
-  end
-
-  return channels
-end
-
-local function SetChannels(ChanNames, Frame, ShouldRemove)
-  ShouldRemove = ShouldRemove or false
-
-  for k, _ in pairs(ChanNames) do
-    if ShouldRemove == true and k ~= "" then
-      ChatFrame_RemoveChannel(Frame, k)
-    elseif k ~= "" then
-      ChatFrame_AddChannel(Frame, k)
-    end
-  end
-end
-
-local function MissingChannels(ChanNames, ChannelsToAdd)
-  local missingChannels = {}
-  for k, _ in pairs(ChannelsToAdd) do
-    if ChanNames[k] == nil and ChanNames[k] ~= "" then
-      missingChannels[k] = 1
-    end
-  end
-  return missingChannels
-end
-
-function GBB.InsertChat()
-  local chatFrameInit = false
-  local tabName = "LFG"
-
-
-  for i = 1, NUM_CHAT_WINDOWS do
-    local tab = _G["ChatFrame" .. i .. "Tab"]
-    local name = tab:GetText()
-    local shown = tab:IsShown()
-    if name == tabName and shown == true then
-      chatFrameInit = true
-    end
-  end
-
-  if chatFrameInit == true then
-    return
-  end
-
-  local ChannelsToAdd = { [GBB.L["world_channel"]] = 1, }
-
-
-
-  local Frame = GBB.CreateChatFrame(tabName, "SAY", "EMOTE", "YELL", "GUILD", "OFFICER", "PARTY", "PARTY_LEADER", "RAID",
-    "RAID_LEADER", "RAID_WARNING", "BATTLEGROUND", "BATTLEGROUND_LEADER", "SYSTEM", "MONSTER_WHISPER",
-    "MONSTER_BOSS_WHISPER", "INSTANCE_CHAT", "INSTANCE_CHAT_LEADER")
-
-  local channels = GetChannels()
-  local channelNames = {}
-  for _, v in pairs(channels) do
-    channelNames[v["name"]] = v["isDisabled"]
-  end
-
- 
-  local missingChannels = MissingChannels(channelNames, ChannelsToAdd)
-
-  for k, _ in pairs(missingChannels) do
-    JoinChannelByName(k, nil, Frame:GetID())
-
-    channelNames[k] = 0
-  end
-
-  SetChannels(channelNames, Frame, false)
-
-  FCF_SelectDockFrame(ChatFrame1)
-  GBB.DB["NotifyChat"] = true
-  GBB.OptionsUpdate()
-end
-
 function GBB.SendMessage(ChannelName, Msg)
   local index = GetChannelName(ChannelName)
   if (index ~= nil) then
@@ -164,12 +71,6 @@ function GBB.Announce()
     GBB.SendMessage(GBB.DB.AnnounceChannel, msg)
     GroupBulletinBoardFrameAnnounceMsg:ClearFocus()
   end
-end
-
--- Class icons/colors are intentionally NOT injected into the regular chat
--- frames for /yell or /emote. They should only appear inside the GBB request
--- list. Kept as a no-op stub for backward compatibility with any caller.
-function GBB.HookChatColors()
 end
 
 function GBB.CreateChannelPulldown(frame, level, menuList)

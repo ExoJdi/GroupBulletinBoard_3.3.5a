@@ -8,7 +8,6 @@ local RAID_CLASS_COLORS_HEX = GBB.api and GBB.api.RAID_CLASS_COLORS_HEX or {}
 
 
 local has_wotlk = (GBB.api.content.expansion >= GBB.api.content.WOTLK)
-GBB.ResizeTimer = 0
 GBB.colors = {
   highlight = function(word)
     return string.format("|cffff9f69%s|r", word)
@@ -47,19 +46,14 @@ end
 GBB.Version = SafeGetAddOnMetadata(TOCNAME, "Version")
 GBB.Title = GetAddOnMetadata(TOCNAME, "Title")
 GBB.Icon = "Interface\\Icons\\spell_holy_prayerofshadowprotection"
-GBB.MiniIcon = "Interface\\Icons\\spell_holy_prayerofshadowprotection"
 GBB.AchievementIcon = {
   texture = "Interface\\AchievementFrame\\UI-Achievement-TinyShield",
   texCoord = { 0, 0.625, 0, 0.625 }
 }
 GBB.FriendIcon = "Interface\\LootFrame\\toast-star"
 GBB.GuildIcon = "Interface\\COMMON\\Indicator-Green"
-GBB.PastPlayerIcon = "Interface\\COMMON\\Indicator-Yellow"
 GBB.TxtEscapePicture = "|T%s:0|t"
 GBB.NotifySound = "FriendJoinGame"
-
-local PartyChangeEvent = { "GROUP_JOINED", "GROUP_LEFT",
-  "LOADING_SCREEN_DISABLED", "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_DISABLED", "PLAYER_ENTERING_WORLD" }
 
 GBB.MSGPREFIX = "GBB: "
 GBB.TAGBAD = "---"
@@ -71,13 +65,6 @@ GBB.LFG_Timer = 0
 GBB.LFG_UPDATETIME = 10
 GBB.TBCDUNGEONBREAK = 57
 GBB.DUNGEONBREAK = 25
-GBB.COMBINEMSGTIMER = 10
-GBB.MAXCOMPACTWIDTH = 350
--- Minimum interval (seconds) between updates of an existing entry coming
--- from /yell or /emote for the same sender. Server-side rate limits already
--- throttle /lfg and /trade (~60s) but /yell and /emote are not limited, so
--- spammers would otherwise constantly rotate the request list. New senders
--- still appear instantly; only re-updates of an existing entry are delayed.
 GBB.SPAM_THROTTLE_SECONDS = 30
 
 function GBB.GetGearScore()
@@ -132,9 +119,10 @@ GBB.RaidAchievements = {
 
 function GBB.GetBestAchievement(dungeonID)
   if not dungeonID or not GBB.RaidAchievements[dungeonID] then return nil end
-  for _, achieveId in ipairs(GBB.RaidAchievements[dungeonID]) do
-    if select(4, GetAchievementInfo(achieveId)) then
-      return achieveId
+  local list = GBB.RaidAchievements[dungeonID]
+  for idx = #list, 1, -1 do
+    if select(4, GetAchievementInfo(list[idx])) then
+      return list[idx]
     end
   end
   return nil
@@ -182,6 +170,7 @@ function GBB.Split(msg)
 end
 
 function GBB.SplitNoNb(msg)
+  msg = string.gsub(msg, "\226\128[\152\153]", "'")
   local msgOrg = string.lower(msg)
   msg = string.gsub(string.lower(msg), "[´`]", "'")
   msg = string.gsub(msg, "''", "'")
@@ -386,6 +375,7 @@ function GBB.CreateTagListLOC(loc)
 
   for dungeon, tags in pairs(GBB.dungeonTagsLoc[loc]) do
     for id, tag in pairs(tags) do
+      tag = string.lower(tag)
       if GBB.DB.OnDebug and GBB.tagList[tag] ~= nil then
         print(GBB.MSGPREFIX .. "DoubleTag:" .. tag .. " - " .. GBB.tagList[tag] .. " / " .. dungeon)
       end
@@ -446,24 +436,6 @@ local function hooked_createTooltip(self)
       end
     end
 
-    if GBB.DB.EnableGroup and GBB.GroupTrans and GBB.GroupTrans[name] then
-      local inInstance, instanceType = IsInInstance()
-
-      if instanceType == "none" then
-        local entry = GBB.GroupTrans[name]
-
-        self:AddLine(" ")
-        self:AddLine(GBB.L.msgLastSeen)
-        if entry.dungeon then
-          self:AddLine(entry.dungeon)
-        end
-        if entry.Note then
-          self:AddLine(entry.Note)
-        end
-        self:AddLine(SecondsToTime(GetServerTime() - entry.lastSeen))
-        self:Show()
-      end
-    end
   end
 end
 
@@ -489,11 +461,9 @@ function GBB.Popup_Minimap(frame, notminimap)
   GBB.PopupDynamic:AddItem(GBB.L["CboxNotifySound"], false, GBB.DB, "NotifySound")
 
   if notminimap ~= false then
-    GBB.PopupDynamic:AddItem("", true)
     GBB.PopupDynamic:AddItem(GBB.L["CboxLockMinimapButton"], false, GBB.DB.MinimapButton, "lock")
     GBB.PopupDynamic:AddItem(GBB.L["CboxLockMinimapButtonDistance"], false, GBB.DB.MinimapButton, "lockDistance")
   end
-  GBB.PopupDynamic:AddItem("", true)
   GBB.PopupDynamic:AddItem(GBB.L["BtnCancel"], false)
 
   GBB.PopupDynamic:Show(frame, 0, 0)
@@ -524,7 +494,6 @@ function GBB.Init()
 
   GBB.UserLevel = UnitLevel("player")
   GBB.UserName = (GBB.api.UnitFullName("player"))
-  GBB.ServerName = GetRealmName()
 
   if not GroupBulletinBoardDb then GroupBulletinBoardDb = {} end
   if not GroupBulletinBoardDbChar then GroupBulletinBoardDbChar = {} end
@@ -573,7 +542,6 @@ function GBB.Init()
 
   GBB.ClearNeeded = true
   GBB.ClearTimer = GBB.MAXTIME
-  GBB.whoCooldown = {}
   GBB.suppressWhoOutput = true
 
   GBB.LFG_Timer = time() + GBB.LFG_UPDATETIME
@@ -681,12 +649,8 @@ function GBB.Init()
   end)
   GBB.Tool.EnableMoving(GroupBulletinBoardFrame, GBB.SaveAnchors)
 
-  GBB.PatternWho1 = GBB.Tool.CreatePattern(WHO_LIST_FORMAT)
-  GBB.PatternWho2 = GBB.Tool.CreatePattern(WHO_LIST_GUILD_FORMAT)
-  GBB.PatternOnline = GBB.Tool.CreatePattern(ERR_FRIEND_ONLINE_SS)
   GBB.RealLevel = {}
   GBB.RealClass = {}
-  GBB.lastWhoTime = 0
   GBB.RealLevel[GBB.UserName] = GBB.UserLevel
 
   GBB.Initalized = true
@@ -695,19 +659,7 @@ function GBB.Init()
   GBB.pendingScrollRestore = nil
   GBB.PopupDynamic = GBB.Tool.CreatePopup(GBB.OptionsUpdate)
 
-  GroupBulletinBoardFrame_GroupFrame:Hide()
-  GBB.DB.EnableGroup = false
-
   GameTooltip:HookScript("OnTooltipSetUnit", hooked_createTooltip)
-  GBB.HookChatColors()
-
-  local function SafeGetAddOnMetadata(addon, field)
-    if addon and GetAddOnMetadata then
-      return GetAddOnMetadata(addon, field) or "Unknown"
-    end
-    return "Unknown"
-  end
-  GBB.Version = SafeGetAddOnMetadata(TOCNAME, "Version")
 end
 
 local function Event_CHAT_MSG_SYSTEM(arg1)
@@ -781,10 +733,6 @@ function GBB.OnLoad()
     if GBB.UpdateList then GBB.UpdateList() end
   end)
 
-  for i, event in ipairs(PartyChangeEvent) do
-    GBB.Tool.RegisterEvent(event, GBB.UpdateGroupList)
-  end
-
   GBB.Tool.OnUpdate(GBB.OnUpdate)
 end
 
@@ -813,6 +761,12 @@ function GBB.OnUpdate(elapsed)
       local sf = GroupBulletinBoardFrame_ScrollFrame
       sf:SetVerticalScroll(GBB.pendingScrollRestore)
       GBB.pendingScrollRestore = nil
+    end
+
+    GBB.ElapsedSinceListUpdate = (GBB.ElapsedSinceListUpdate or 0) + (elapsed or 0)
+    if GBB.ElapsedSinceListUpdate >= 1 then
+      GBB.ElapsedSinceListUpdate = 0
+      if GBB.RefreshTimes then GBB.RefreshTimes() end
     end
   end
 end

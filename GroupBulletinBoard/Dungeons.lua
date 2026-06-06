@@ -85,6 +85,7 @@ function GBB.GetDungeonNames()
     [ "ARENA" ] = "Arena (PvP)",
     [ "MISC" ] = "Miscellaneous",
     [ "TRADE" ] = "Trade",
+    [ "GDKP" ] = "GDKP",
     [ "DEBUG" ] = "DEBUG INFO",
     [ "BAD" ] = "DEBUG BAD WORDS - REJECTED",
     [ "BREW" ] = "Brewfest - Coren Direbrew",
@@ -526,6 +527,7 @@ GBB.VanillaDungeonLevels = {
   [ "DEBUG" ] = { 0, 100 },
   [ "BAD" ] = { 0, 100 },
   [ "TRADE" ] = { 0, 100 },
+  [ "GDKP" ] = { 0, 100 },
   [ "SM2" ] = { 28, 42 },
   [ "DM2" ] = { 58, 60 },
   [ "DEADMINES" ] = { 18, 23 },
@@ -568,6 +570,7 @@ GBB.PostTbcDungeonLevels = {
   [ "DEBUG" ] = { 0, 100 },
   [ "BAD" ] = { 0, 100 },
   [ "TRADE" ] = { 0, 100 },
+  [ "GDKP" ] = { 0, 100 },
   [ "SM2" ] = { 28, 42 },
   [ "DM2" ] = { 58, 60 },
   [ "DEADMINES" ] = { 16, 24 },
@@ -690,7 +693,7 @@ GBB.TbcDungeonNames      = {
   "GRUULS", "ZA", "HYJAL", "BT", "SWP",
 }
 
-GBB.Misc = { "MISC", "TRADE", }
+GBB.Misc = { "GDKP", "MISC", "TRADE", }
 
 GBB.DebugNames = {
   "DEBUG", "BAD", "NIL",

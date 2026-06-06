@@ -42,18 +42,50 @@ end
 local LastDungeon
 local lastIsFolded
 
--- Forward declarations so the click handler installed in CreateItem (defined
--- earlier in the file than these helpers) can reach them via upvalues.
 local GBB_MeasureFS
 local FindLinkAtCursor
 
-local function GetDynamicClassIcon(classFile, size, yoffset)
-  local staticIcon = GBB.Tool.IconClass[classFile]
-  if not staticIcon then return "" end
-  local path = staticIcon:match("%|T(.-):%d+:%d+")
-  if not path then return staticIcon end
-  yoffset = yoffset or 0
-  return string.format("|T%s:%d:%d:0:%d:64:64:0:64:0:64|t", path, size, size, yoffset)
+local function CursorOverRegion(region)
+  if not region then return false end
+  local left, bottom = region:GetLeft(), region:GetBottom()
+  local width, height = region:GetWidth(), region:GetHeight()
+  if not (left and bottom and width and height) then return false end
+  local cx, cy = GetCursorPosition()
+  local scale = UIParent:GetEffectiveScale()
+  if not (cx and cy and scale and scale > 0) then return false end
+  cx, cy = cx / scale, cy / scale
+  return cx >= left and cx <= left + width and cy >= bottom and cy <= bottom + height
+end
+
+local function ItemIconMarkup(itemId, size)
+  if not itemId then return "" end
+  local texture = GetItemIcon(itemId)
+  if not texture then
+    texture = select(10, GetItemInfo(itemId))
+  end
+  if not texture then
+    texture = "Interface\\Icons\\INV_Misc_QuestionMark"
+  end
+  return string.format("|T%s:%d:%d|t", texture, size, size)
+end
+
+local function VisibleText(text)
+  text = text:gsub("|c%x%x%x%x%x%x%x%x", "")
+  text = text:gsub("|r", "")
+  text = text:gsub("|H.-|h", "")
+  text = text:gsub("|h", "")
+  return text
+end
+
+local function LinkifyUrls(message)
+  if not message then return message end
+  local function wrap(url)
+    return "|cff40c0f8|Hurl:" .. url .. "|h[" .. url .. "]|h|r"
+  end
+  message = message:gsub("(https?://[^%s|]+)", wrap)
+  message = " " .. message
+  message = message:gsub("([%s])(www%.[^%s|]+)", function(pre, url) return pre .. wrap(url) end)
+  return message:sub(2)
 end
 
 local function requestSort_TOP_TOTAL(a, b)
@@ -243,9 +275,6 @@ local function CreateItem(yy, i, doCompact, req, forceHight)
     end
 
     GBB.FramesEntries[i]:SetScript("OnMouseDown", function(self, button)
-      -- A click on a hyperlink (item, achievement, profession, etc.) must
-      -- behave like a standard chat link click, regardless of modifier keys.
-      -- GBB's shift/ctrl/alt shortcuts only apply to clicks on plain text.
       if button == "LeftButton" then
         local msg = _G[self:GetName() .. "_message"]
         if msg then
@@ -254,16 +283,40 @@ local function CreateItem(yy, i, doCompact, req, forceHight)
           local left = msg:GetLeft()
           local top = msg:GetTop()
           local width = msg:GetWidth()
-          local height = msg:GetHeight()
+          local height = msg:GetStringHeight()
           if x and y and scale and scale > 0 and left and top and width and height then
             local cx, cy = x / scale, y / scale
             if cx >= left and cx <= left + width and cy <= top and cy >= top - height and FindLinkAtCursor then
-              local link = FindLinkAtCursor(msg, cx)
+              local link = FindLinkAtCursor(msg, cx, cy)
               if link then
-                SetItemRef(link, link, "LeftButton")
+                local linkData = link:match("|H(.-)|h")
+                if linkData then
+                  local url = linkData:match("^url:(.+)")
+                  if url then
+                    local eb = (ChatEdit_ChooseBoxForSend and ChatEdit_ChooseBoxForSend()) or DEFAULT_CHAT_FRAME.editBox
+                    if eb then
+                      ChatEdit_ActivateChat(eb)
+                      eb:SetText(url)
+                      eb:HighlightText()
+                    end
+                  else
+                    SetItemRef(linkData, link, "LeftButton")
+                  end
+                end
                 return
               end
             end
+          end
+        end
+      elseif button == "RightButton" then
+        local nameFS = _G[self:GetName() .. "_name"]
+        if nameFS and nameFS:IsShown() and CursorOverRegion(nameFS) then
+          local id = string.match(self:GetName(), "GBB.Item_(.+)")
+          local req = id and GBB.RequestList[tonumber(id)]
+          if req and req.name and req.name ~= "" then
+            local nameLink = "|Hplayer:" .. req.name .. "|h[" .. req.name .. "]|h"
+            SetItemRef("player:" .. req.name, nameLink, "RightButton")
+            return
           end
         end
       end
@@ -309,8 +362,7 @@ local function CreateItem(yy, i, doCompact, req, forceHight)
     end
 
     local FriendIcon = (req.IsFriend and string.format(GBB.TxtEscapePicture, GBB.FriendIcon) or "") ..
-        (req.IsGuildMember and string.format(GBB.TxtEscapePicture, GBB.GuildIcon) or "") ..
-        (req.IsPastPlayer and string.format(GBB.TxtEscapePicture, GBB.PastPlayerIcon) or "")
+        (req.IsGuildMember and string.format(GBB.TxtEscapePicture, GBB.GuildIcon) or "")
 
     local suffix = "|r"
     if GBB.RealLevel[req.name] then
@@ -343,13 +395,20 @@ local function CreateItem(yy, i, doCompact, req, forceHight)
       end
     end
 
+    local itemIconSize = GBB.DB.fontSize + 4
+    if itemIconSize < 14 then itemIconSize = 14 end
+    local displayMsg = req.message:gsub("(|Hitem:(%d+):)", function(prefix, id)
+      return ItemIconMarkup(tonumber(id), itemIconSize) .. prefix
+    end)
+    displayMsg = LinkifyUrls(displayMsg)
+
     local rawMessage
     if GBB.DB.ChatStyle then
       nameStr:SetText("")
-      rawMessage = ClassIcon .. "[" .. prefix .. req.name .. suffix .. "]" .. FriendIcon .. ": " .. req.message
+      rawMessage = ClassIcon .. "[" .. prefix .. req.name .. suffix .. "]" .. FriendIcon .. ": " .. displayMsg
     else
       nameStr:SetText(ClassIcon .. prefix .. req.name .. suffix .. FriendIcon)
-      rawMessage = typePrefix .. "|r" .. req.message
+      rawMessage = typePrefix .. "|r" .. displayMsg
       timeStr:SetText(ti)
     end
 
@@ -594,6 +653,26 @@ function GBB.UpdateList()
   GroupBulletinBoardFrameStatusText:SetText(string.format(GBB.L["msgNbRequest"], count))
 end
 
+function GBB.RefreshTimes()
+  if not GroupBulletinBoardFrame:IsVisible() then return end
+  if GBB.DB.ChatStyle then return end
+  for i, frame in pairs(GBB.FramesEntries) do
+    if type(i) == "number" and i > 0 and frame:IsShown() then
+      local req = GBB.RequestList[i]
+      if req and req.start and req.last then
+        local timeStr = _G[frame:GetName() .. "_time"]
+        if timeStr then
+          if GBB.DB.ShowTotalTime then
+            timeStr:SetText(GBB.formatTime(time() - req.start))
+          else
+            timeStr:SetText(GBB.formatTime(time() - req.last))
+          end
+        end
+      end
+    end
+  end
+end
+
 local nonLfgHyperlinks = {
   ["|Hglyph:"] = true,
   ["|Hspell:"] = true,
@@ -625,6 +704,15 @@ function GBB.GetDungeons(msg, name)
   local runDungeon = ""
 
   local wordcount = 0
+
+  local osIsRaid = false
+  do
+    local low = msg:lower()
+    if low:find("obsidian") or low:find("sanctum") or low:find("sarth")
+        or low:find("os%s*%d") or low:find("%d%s*drake") then
+      osIsRaid = true
+    end
+  end
 
   if GBB.DB.TagsZhtw then
     for key, v in pairs(GBB.tagList) do
@@ -676,6 +764,15 @@ function GBB.GetDungeons(msg, name)
       end
 
       local x = GBB.tagList[p]
+
+      if x ~= nil and x ~= GBB.TAGBAD and x ~= GBB.TAGSEARCH
+          and GBB.classSpecRoleTags and GBB.classSpecRoleTags[p] then
+        x = nil
+      end
+
+      if p == "os" and x == "OS" and not osIsRaid then
+        x = nil
+      end
 
       if GBB.HeroicKeywords[p] ~= nil then
         isHeroic = true
@@ -806,7 +903,11 @@ function GBB.ParseMessage(msg, name, guid, channel)
 
   local requestTime = time()
 
-  local parsedMsg = msg:gsub("|H.-|h%[.-%]|h", "")
+  local parsedMsg = msg
+  for _, prefix in ipairs({ "item", "trade", "enchant", "glyph", "spell", "talent" }) do
+    parsedMsg = parsedMsg:gsub("|H" .. prefix .. ":.-|h%[.-%]|h", "")
+  end
+  parsedMsg = parsedMsg:gsub("|H.-|h(%[.-%])|h", "%1")
 
   if GBB.DB.RemoveRaidSymbols then
     parsedMsg = string.gsub(parsedMsg, "{.-}", "*")
@@ -819,9 +920,53 @@ function GBB.ParseMessage(msg, name, guid, channel)
   local fullName = name
   name = GBB.Tool.Split(name, "-")[1]
 
+  do
+    local lowMsg = parsedMsg:lower()
+    if lowMsg:find("raid days", 1, true)
+        or lowMsg:find("raiding days", 1, true)
+        or lowMsg:find("core raider", 1, true)
+        or lowMsg:find("raider spot", 1, true)
+        or lowMsg:find("raiding spot", 1, true) then
+      return
+    end
+  end
+
   local dungeonList, isGood, isBad, wordcount, isHeroic = GBB.GetDungeons(parsedMsg, name)
   if type(dungeonList) ~= "table" then return end
   if isBad then return end
+
+  if msg:find("|Htrade:", 1, true) or msg:find("|Henchant:", 1, true) then
+    dungeonList = { TRADE = true }
+    isGood = true
+  end
+
+  do
+    local lowMsg = " " .. parsedMsg:lower() .. " "
+    if lowMsg:find("%f[%a]wt[sbt]%f[%A]") then
+      local isLFM = lowMsg:find("%f[%a]lf[mg]%f[%A]") ~= nil
+      local hasRaid = false
+      if isLFM then
+        for d in pairs(dungeonList) do
+          if GBB.RaidList[d] then
+            hasRaid = true
+            break
+          end
+        end
+      end
+      if not (isLFM and hasRaid) then
+        dungeonList = { TRADE = true }
+        isGood = true
+      end
+    end
+  end
+
+  do
+    local lowMsg = " " .. parsedMsg:lower() .. " "
+    if lowMsg:find("gdkp", 1, true) or lowMsg:find("goldbid", 1, true) or lowMsg:find("gold bid", 1, true) then
+      dungeonList = { GDKP = true }
+      isGood = true
+    end
+  end
 
   if GBB.DB.UseAllInLFG and isBad == false and isGood == false and string.lower(GBB.L["lfg_channel"]) == string.lower(channel) then
     isGood = true
@@ -832,7 +977,7 @@ function GBB.ParseMessage(msg, name, guid, channel)
     return
   end
 
-  if wordcount <= 1 then return end
+  if (wordcount or 0) <= 1 then return end
 
   if dungeonList["TRADE"] and isGood then
     local hasOther = false
@@ -959,7 +1104,6 @@ function GBB.ParseMessage(msg, name, guid, channel)
       IsRaid = isRaid,
       IsGuildMember = false,
       IsFriend = false,
-      IsPastPlayer = GBB.GroupTrans[name] ~= nil,
     }
     table.insert(GBB.RequestList, newReq)
     GBB.ClearNeeded = true
@@ -1101,54 +1245,86 @@ function GBB.ClickRequest(self, button)
   end
 end
 
-FindLinkAtCursor = function(message, cursorX)
+FindLinkAtCursor = function(message, cursorX, cursorY)
   local text = message:GetText()
   if not text then return nil end
-  local left = message:GetLeft()
-  if not left then return nil end
+  local left, top = message:GetLeft(), message:GetTop()
+  if not left or not top then return nil end
 
   local links = {}
   for link in text:gmatch("(|H.-|h%[.-%]|h)") do
-    table.insert(links, link)
+    links[#links + 1] = link
   end
   if #links == 0 then return nil end
 
-  local relX = cursorX - left
-  local font, size = message:GetFont()
+  local font, fsize, flags = message:GetFont()
   if not font then return nil end
-
   if not GBB_MeasureFS then
     GBB_MeasureFS = UIParent:CreateFontString(nil, "ARTWORK")
   end
-  GBB_MeasureFS:SetFont(font, size or 12, "")
+  GBB_MeasureFS:SetFont(font, fsize or 12, flags)
 
-  local function stripCodes(s)
-    s = s:gsub("|c%x%x%x%x%x%x%x%x", "")
-    s = s:gsub("|r", "")
-    s = s:gsub("|T[^|]+|t", "")
-    s = s:gsub("|H[^|]+|h(%b[])|h", function(cap) return cap:sub(2, -2) end)
-    return s
+  local width = message:GetWidth()
+  local visible = VisibleText(text)
+
+  GBB_MeasureFS:SetWidth(0)
+  GBB_MeasureFS:SetText("Wg")
+  local lineH = GBB_MeasureFS:GetStringHeight()
+  if not lineH or lineH <= 0 then lineH = (fsize or 12) + 2 end
+
+  GBB_MeasureFS:SetWidth(width)
+  local function lineOf(n)
+    if n <= 1 then return 1 end
+    GBB_MeasureFS:SetText(visible:sub(1, n))
+    local h = GBB_MeasureFS:GetStringHeight()
+    local l = math.floor(h / lineH + 0.5)
+    if l < 1 then l = 1 end
+    return l
   end
 
-  local stripped = stripCodes(text)
-  local pos = 1
+  local cursorLine = math.floor((top - cursorY) / lineH) + 1
+  if cursorLine < 1 then cursorLine = 1 end
+  local relX = cursorX - left
 
+  local searchPos = 1
   for _, link in ipairs(links) do
-    local display = link:match("|h%[(.-)%]|h") or ""
-    local linkPos = stripped:find(display, pos, true)
-    if linkPos then
-      GBB_MeasureFS:SetText(stripped:sub(1, linkPos - 1))
-      local startX = GBB_MeasureFS:GetStringWidth()
-      GBB_MeasureFS:SetText(stripped:sub(1, linkPos - 1 + #display))
-      local endX = GBB_MeasureFS:GetStringWidth()
-      if relX >= startX and relX <= endX then
-        GBB_MeasureFS:SetText("")
-        return link
+    local display = link:match("|h(%b[])|h")
+    if display then
+      local s = visible:find(display, searchPos, true)
+      if s then
+        local e = s + #display - 1
+        searchPos = e + 1
+        local ls = lineOf(s)
+        local le = lineOf(e)
+        if cursorLine >= ls and cursorLine <= le then
+          local a, b = 1, #visible
+          while a < b do
+            local mid = math.floor((a + b) / 2)
+            if lineOf(mid) < cursorLine then a = mid + 1 else b = mid end
+          end
+          local lineStartIdx = a
+          GBB_MeasureFS:SetWidth(0)
+          local xLo, xHi = 0, width
+          if cursorLine == ls then
+            GBB_MeasureFS:SetText(visible:sub(lineStartIdx, s - 1))
+            xLo = GBB_MeasureFS:GetStringWidth()
+          end
+          if cursorLine == le then
+            GBB_MeasureFS:SetText(visible:sub(lineStartIdx, e))
+            xHi = GBB_MeasureFS:GetStringWidth()
+          end
+          GBB_MeasureFS:SetWidth(width)
+          if relX >= xLo and relX <= xHi then
+            GBB_MeasureFS:SetWidth(0)
+            GBB_MeasureFS:SetText("")
+            return link
+          end
+        end
       end
-      pos = linkPos + #display
     end
   end
 
+  GBB_MeasureFS:SetWidth(0)
   GBB_MeasureFS:SetText("")
   return nil
 end
@@ -1164,14 +1340,6 @@ local function ShowMessageTooltip(self, req)
     GameTooltip:AddLine(string.format(GBB.L["msgLastTime"], GBB.formatTime(time() - req.last)))
   else
     GameTooltip:AddLine(string.format(GBB.L["msgTotalTime"], GBB.formatTime(time() - req.start)))
-  end
-  if GBB.DB.EnableGroup and GBB.GroupTrans and GBB.GroupTrans[req.name] then
-    local entry = GBB.GroupTrans[req.name]
-    GameTooltip:AddLine(GBB.Tool.IconClass[entry.class] ..
-      "|c" .. RAID_CLASS_COLORS_HEX[entry.class] .. entry.name)
-    if entry.dungeon then GameTooltip:AddLine(entry.dungeon) end
-    if entry.Note then GameTooltip:AddLine(entry.Note) end
-    GameTooltip:AddLine(SecondsToTime(GetServerTime() - entry.lastSeen))
   end
   if LogTracker then LogTracker:AddPlayerInfoToTooltip(req.name) end
   GameTooltip:Show()
@@ -1198,11 +1366,21 @@ local function UpdateTooltipForFrame(self)
         local height = message:GetStringHeight()
         if left and top and width and height then
           if cx >= left and cx <= left + width and cy >= top - height and cy <= top then
-            local link = FindLinkAtCursor(message, cx)
+            local link = FindLinkAtCursor(message, cx, cy)
             if link then
               local linkType = link:match("|H([^:|]+)")
               if linkType == "trade" then
                 GameTooltip:Hide()
+                return
+              end
+              if linkType == "url" then
+                if self._gbb_lastLink ~= link then
+                  self._gbb_lastLink = link
+                  GameTooltip:SetOwner(self, "ANCHOR_CURSOR")
+                  GameTooltip:ClearLines()
+                  GameTooltip:AddLine(link:match("|h%[(.-)%]|h") or "")
+                  GameTooltip:Show()
+                end
                 return
               end
               if self._gbb_lastLink ~= link then
