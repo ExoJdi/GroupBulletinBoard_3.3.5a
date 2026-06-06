@@ -14,10 +14,6 @@
 - Added the ability to choose the font and font size;
 - And a bunch of minor fixes.
 
-  
-## This is a port to WotLK (3.3.5a)!
-
-* Fork - WotLK (3.3.5a) port: [fondlez](https://github.com/fondlez)
 
 ## Description
 GroupBulletinBoard (GBB) provides an overview of the endless requests in the 
